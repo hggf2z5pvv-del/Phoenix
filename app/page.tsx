@@ -1,65 +1,101 @@
-import Image from "next/image";
+type WeatherData = {
+  current: {
+    temperature_2m: number;
+    relative_humidity_2m: number;
+    weather_code: number;
+    wind_speed_10m: number;
+  };
+};
 
-export default function Home() {
+function getWeatherDescription(code: number) {
+  if (code === 0) return "Clear sky";
+  if (code >= 1 && code <= 3) {
+    return ["Mostly clear", "Partly cloudy", "Overcast"][code - 1];
+  }
+  if (code >= 45 && code <= 48) return "Foggy";
+  if (code >= 51 && code <= 67) return "Rain";
+  if (code >= 71 && code <= 77) return "Snow";
+  if (code >= 80 && code <= 82) return "Rain showers";
+  if (code >= 95 && code <= 99) return "Thunderstorm";
+
+  return "Unknown conditions";
+}
+
+async function getLondonWeather() {
+  const response = await fetch(
+    "https://api.open-meteo.com/v1/forecast?latitude=51.5074&longitude=-0.1278&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&temperature_unit=celsius",
+    { cache: "no-store" },
+  );
+
+  if (!response.ok) {
+    throw new Error("Unable to fetch London weather");
+  }
+
+  return (await response.json()) as WeatherData;
+}
+
+export default async function Home() {
+  let weather: WeatherData | null = null;
+  let error = false;
+
+  try {
+    weather = await getLondonWeather();
+  } catch {
+    error = true;
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            Blue
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-sky-100 via-blue-200 to-indigo-300 px-6 py-12 font-sans text-slate-950 dark:from-slate-950 dark:via-blue-950 dark:to-slate-900 dark:text-white">
+      <section className="w-full max-w-md rounded-3xl border border-white/50 bg-white/80 p-8 shadow-2xl shadow-blue-950/10 backdrop-blur dark:border-white/10 dark:bg-slate-900/75 dark:shadow-black/40">
+        <div className="mb-8">
+          <p className="text-sm font-medium uppercase tracking-[0.3em] text-blue-700 dark:text-blue-300">
+            Current weather
           </p>
+          <h1 className="mt-3 text-4xl font-semibold tracking-tight">
+            London
+          </h1>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+
+        {error || !weather ? (
+          <div className="rounded-2xl bg-red-50 p-5 text-red-900 dark:bg-red-950/50 dark:text-red-100">
+            <h2 className="text-lg font-semibold">Weather unavailable</h2>
+            <p className="mt-2 text-sm leading-6">
+              Sorry, we could not load the latest London weather right now.
+              Please try again soon.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="mb-8">
+              <p className="text-7xl font-bold tracking-tighter">
+                {Math.round(weather.current.temperature_2m)}°C
+              </p>
+              <p className="mt-3 text-xl text-slate-700 dark:text-slate-300">
+                {getWeatherDescription(weather.current.weather_code)}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-2xl bg-blue-50 p-4 dark:bg-white/10">
+                <p className="text-sm text-slate-600 dark:text-slate-300">
+                  Humidity
+                </p>
+                <p className="mt-2 text-2xl font-semibold">
+                  {weather.current.relative_humidity_2m}%
+                </p>
+              </div>
+              <div className="rounded-2xl bg-blue-50 p-4 dark:bg-white/10">
+                <p className="text-sm text-slate-600 dark:text-slate-300">
+                  Wind speed
+                </p>
+                <p className="mt-2 text-2xl font-semibold">
+                  {weather.current.wind_speed_10m} km/h
+                </p>
+              </div>
+            </div>
+          </>
+        )}
+      </section>
+    </main>
   );
 }
